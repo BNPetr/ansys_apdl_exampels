@@ -1,0 +1,152 @@
+FINISH
+/CLEAR,ALL
+/prep7
+
+pi=3.14159
+! Shell radius.
+R=0.6
+! Shell height.
+H=1.2
+! Number of pairs of spiral ribs.
+Ns=26
+! Number of ring ribs, including end ribs.
+Nk=8
+! Rib thickness.
+W=0.005
+! Shell thickness.
+T=0.010
+
+! Orthotropic material properties.
+MPTEMP,1,0
+MPDATA,EX  ,1,,7.20e+10,
+MPDATA,EY  ,1,,7.24e+09,
+MPDATA,EZ  ,1,,1.08e+10,
+MPDATA,GXY ,1,,2.40e+09,
+MPDATA,GYZ ,1,,4.24e+09,
+MPDATA,GXZ ,1,,2.25e+09,
+MPDATA,PRXY,1,,0.319,
+MPDATA,PRYZ,1,,0.319
+MPDATA,PRXZ,1,,0.196
+
+! Beam element type for ribs.
+ET,1,BEAM189,,1
+! Cross-section of the ribs.
+SECTYPE,1,BEAM,RECT,SecSt
+SECDATA,W,T,2,2
+! Cross-section of the end ribs.
+SECTYPE,2,BEAM,RECT,SecSh
+SECDATA,W*10,T,2,2
+
+! Creates a cylindrical coordinate system using three points.
+K,1,0,0,0
+K,2,1,0,0
+K,3,0,0,-1
+CSKP,11,1,1,2,3,1,1
+! Sets the new coordinate system as active.
+CSYS,11
+
+! Creates bottom rib segment as line with an oriented cross-section.
+KCOUNT=10
+K,KCOUNT+1,R,0,0
+K,KCOUNT+2,R,180/Ns,0
+K,KCOUNT+3,R,360/Ns,0
+K,KCOUNT+4,0,0,0
+L,KCOUNT+1,KCOUNT+2,4
+L,KCOUNT+2,KCOUNT+3,4
+LCOUNT=2 ! Counter for lines.
+LSEL,S,LINE,,LCOUNT-1,LCOUNT
+LATT,1,,1,,KCOUNT+4,KCOUNT+4,2
+
+! Loop for constructing keypoints and lines along the generating line
+! of the cylinder.
+*DO,I,1,Nk-1
+    K,KCOUNT+7,R,0,I*H/(Nk-1)
+    K,KCOUNT+8,R,180/Ns,I*H/(Nk-1)
+    K,KCOUNT+9,R,360/Ns,I*H/(Nk-1)
+    K,KCOUNT+10,0,0,I*H/(Nk-1)
+    L,KCOUNT+7,KCOUNT+8,4
+    L,KCOUNT+8,KCOUNT+9,4
+    LCOUNT=LCOUNT+2
+    LSEL,S,LINE,,LCOUNT-1,LCOUNT
+    LATT,1,,1,,KCOUNT+10,KCOUNT+10,1
+
+    ! Constructs intersections of spiral ribs.
+    *IF,MOD(I,2),GT,0,THEN
+        K,KCOUNT+5,R,90/Ns,(I-0.5)*H/(Nk-1)
+        K,KCOUNT+6,0,0,(I-0.5)*H/(Nk-1)
+        
+        L,KCOUNT+1,KCOUNT+5,4
+        L,KCOUNT+2,KCOUNT+5,4
+        LCOUNT=LCOUNT+2
+        LSEL,S,LINE,,LCOUNT-1,LCOUNT
+        LATT,1,,1,,KCOUNT+4,KCOUNT+6,1
+
+        L,KCOUNT+5,KCOUNT+7,4
+        L,KCOUNT+5,KCOUNT+8,4
+        LCOUNT=LCOUNT+2
+        LSEL,S,LINE,,LCOUNT-1,LCOUNT
+        LATT,1,,1,,KCOUNT+6,KCOUNT+10,1
+    *ELSE
+        K,KCOUNT+5,R,270/Ns,(I-0.5)*H/(Nk-1)
+        K,KCOUNT+6,0,0,(I-0.5)*H/(Nk-1)
+        
+        L,KCOUNT+2,KCOUNT+5,4
+        L,KCOUNT+3,KCOUNT+5,4
+        LCOUNT=LCOUNT+2
+        LSEL,S,LINE,,LCOUNT-1,LCOUNT
+        LATT,1,,1,,KCOUNT+4,KCOUNT+6,1
+        
+        L,KCOUNT+5,KCOUNT+8,4
+        L,KCOUNT+5,KCOUNT+9,4
+        LCOUNT=LCOUNT+2
+        LSEL,S,LINE,,LCOUNT-1,LCOUNT
+        LATT,1,,1,,KCOUNT+6,KCOUNT+10,1
+    *ENDIF
+    KCOUNT=KCOUNT+6
+*ENDDO
+LSEL,S,LINE,,LCOUNT-5,LCOUNT-4
+LATT,1,,1,,KCOUNT+4,KCOUNT+4,2
+
+! Creates lines for the cross of rigid elements on the top rib.
+ET,2,MPC184
+KEYOPT,1,1,1
+KEYOPT,1,2,0
+K,KCOUNT+11,0,0,H
+L,KCOUNT+1,KCOUNT+11,1
+L,KCOUNT+2,KCOUNT+11,1
+LSEL,S,LINE,,LCOUNT+1,LCOUNT+2
+LATT,,,2,,
+
+! Applyes forces to the midpoint of the cross.
+FK,KCOUNT+11,FX,25000
+FK,KCOUNT+11,FY,-35000
+
+! Selects and meshes all lines.
+LSEL,ALL
+LMESH,ALL
+! Copyes shell segment around the circle.
+EGEN,Ns,20*(Nk+Ns),ALL,,,,,,,,,360/Ns,,
+
+! Merges coinciding nodes.
+NUMMRG,NODE
+
+! Selects nodes on the bottom rib.
+NSEL,S,LOC,Z,-0.001,+0.001
+NSEL,U,LOC,X,0,R-0.001
+! Counts the number of nodes on the bottom rib.
+*GET,NCOUNT,NODE,0,COUNT
+! Obtaines node numbers on the lower frame
+! and write them into an array named NARRAY.
+*VGET,NARRAY,NODE,NCOUNT,NLIST
+! Restrict node displacements by numbers from the array.
+*DO,I,1,NCOUNT
+    D,NARRAY(I),ALL
+*ENDDO
+
+NSEL,ALL
+ESEL,ALL
+
+EPLOT  
+/VIEW,1,1,1,1
+/ESHAPE,1.0 
+/REPLOT 
