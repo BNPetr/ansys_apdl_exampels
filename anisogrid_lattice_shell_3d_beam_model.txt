@@ -133,10 +133,9 @@ NUMMRG,NODE
 ! Selects nodes on the bottom rib.
 NSEL,S,LOC,Z,-0.001,+0.001
 NSEL,U,LOC,X,0,R-0.001
-! Counts the number of nodes on the bottom rib.
+! Counts the number of selected nodes.
 *GET,NCOUNT,NODE,0,COUNT
-! Obtaines node numbers on the lower frame
-! and write them into an array named NARRAY.
+! Obtaines node numbers and write them into an array named NARRAY.
 *VGET,NARRAY,NODE,NCOUNT,NLIST
 ! Restrict node displacements by numbers from the array.
 *DO,I,1,NCOUNT
