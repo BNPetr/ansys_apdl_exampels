@@ -1,0 +1,1 @@
+# ansys_apdl_exampels
